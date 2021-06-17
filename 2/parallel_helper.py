@@ -1,5 +1,5 @@
 # Copyright (c) 2020  István Sárándi <sarandi@vision.rwth-aachen.de>
-# Copyright (c) 2020  @ljn917
+# Copyright (c) 2020-2021  @ljn917
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ def parallel_map(
 
     Args:
         fun: A function that takes an element from `iterable` plus `extra_args` and `extra_kwargs`.
-        iterable: An iterable holding the input objects. It must be re-iteratable and non-stateful.
+        iterable: An iterable holding the input objects. It must be re-iterable.
         extra_args: extra positional arguments for `fun`.
         extra_kwargs: extra keyword arguments for `fun`.
         n_workers: Number of worker processes. Workers are shared if multiple generators exist.
