@@ -41,7 +41,7 @@ def parallel_map(
         max_queue=256,
         n_epochs=None,
         yield_flat=False,
-        ctx_new_thread_method='fork',
+        ctx_new_thread_method='spawn',
         ):
     """Maps `fun` to each element of `iterable` with multiprocessing.
 
@@ -64,6 +64,8 @@ def parallel_map(
         pool = get_pool(n_workers, ctx_new_thread_method=ctx_new_thread_method)
         semaphore = multiprocessing.Semaphore(n_workers)
         q = queue.Queue(max_queue)
+        
+        end_of_seq = object()
 
         if n_epochs is None:
             epoch_counter = itertools.count()
@@ -82,14 +84,14 @@ def parallel_map(
             # make sure all workers finished before sending None
             while(semaphore.get_value() != n_workers):
                 time.sleep(1)
-            q.put(None)
+            q.put(end_of_seq)
 
         producer_thread = threading.Thread(target=producer, daemon=True)
         producer_thread.start()
 
         while True:
             result = q.get()
-            if result is None:
+            if result is end_of_seq:
                 return
             else:
                 if yield_flat:
@@ -102,7 +104,7 @@ def parallel_map(
 
 _pool = None
 
-def get_pool(n_workers_if_uninitialized, ctx_new_thread_method='fork'):
+def get_pool(n_workers_if_uninitialized, ctx_new_thread_method='spawn'):
     global _pool
     if _pool is None:
         ctx = multiprocessing.get_context(ctx_new_thread_method)

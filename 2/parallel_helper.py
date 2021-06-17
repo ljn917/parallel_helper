@@ -31,7 +31,6 @@ import itertools
 import signal
 import ctypes
 
-
 def parallel_map(
         fun,
         iterable,
@@ -40,7 +39,7 @@ def parallel_map(
         n_workers=4,
         max_queue=256,
         n_epochs=None,
-        ctx_new_thread_method='fork',
+        ctx_new_thread_method='spawn',
         ):
     """Maps `fun` to each element of `iterable` with multiprocessing.
 
@@ -65,6 +64,8 @@ def parallel_map(
         mng = multiprocessing.Manager()
         q = mng.Queue(max_queue)
 
+        end_of_seq = '__parallel_helper__.module.END_OF_SEQUENCE'
+
         if n_epochs is None:
             epoch_counter = itertools.count()
         else:
@@ -86,21 +87,21 @@ def parallel_map(
             # make sure all workers finished before sending None
             while(semaphore.get_value() != n_workers):
                 time.sleep(1)
-            q.put(None)
+            q.put(end_of_seq)
 
         producer_thread = threading.Thread(target=producer, daemon=True)
         producer_thread.start()
 
         while True:
             result = q.get()
-            if result is None:
+            if result == end_of_seq:
                 return
             else:
                 yield tuple(result)
     return _g
 
 
-def run_parallel(f, iterable, num_workers, extra_args=None, wait_time=120, ctx_new_thread_method='fork'):
+def run_parallel(f, iterable, num_workers, extra_args=None, wait_time=None, ctx_new_thread_method='spawn'):
     if extra_args is None:
         extra_args = {}
     ctx = multiprocessing.get_context(ctx_new_thread_method)
@@ -125,11 +126,11 @@ def run_parallel(f, iterable, num_workers, extra_args=None, wait_time=120, ctx_n
     wait_start = time.time()
     while(semaphore.get_value() != num_workers):
         time.sleep(10)
-        if time.time() - wait_start > wait_time and (not terminate_event.is_set()):
+        if wait_time is not None and time.time() - wait_start > wait_time and (not terminate_event.is_set()):
             terminate_event.set()
 
 
-def get_pool(n_workers_if_uninitialized, ctx_new_thread_method='fork'):
+def get_pool(n_workers_if_uninitialized, ctx_new_thread_method='spawn'):
     ctx = multiprocessing.get_context(ctx_new_thread_method)
     pool = ctx.Pool(n_workers_if_uninitialized, initializer=init_worker_process)
     return pool
